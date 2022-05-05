@@ -1,0 +1,578 @@
+<?php
+//CONVERTING FIGIRE TO WORDS//
+function convertNumberToWord($num = false)
+{
+    $num = str_replace(array(',', ' '), '' , trim($num));
+    if(! $num) {
+        return false;
+    }
+    $num = (int) $num;
+    $words = array();
+    $list1 = array('', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven',
+        'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'
+    );
+    $list2 = array('', 'ten', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety', 'hundred');
+    $list3 = array('', 'thousand', 'million', 'billion', 'trillion', 'quadrillion', 'quintillion', 'sextillion', 'septillion',
+        'octillion', 'nonillion', 'decillion', 'undecillion', 'duodecillion', 'tredecillion', 'quattuordecillion',
+        'quindecillion', 'sexdecillion', 'septendecillion', 'octodecillion', 'novemdecillion', 'vigintillion'
+    );
+    $num_length = strlen($num);
+    $levels = (int) (($num_length + 2) / 3);
+    $max_length = $levels * 3;
+    $num = substr('00' . $num, -$max_length);
+    $num_levels = str_split($num, 3);
+    for ($i = 0; $i < count($num_levels); $i++) {
+        $levels--;
+        $hundred = (int) ($num_levels[$i] / 100);
+        $hundred = ($hundred ? ' ' . $list1[$hundred] . ' hundred' . ( $hundred == 1 ? '' : '' ) . ' ' : '');
+        $tens = (int) ($num_levels[$i] % 100);
+        $singles = '';
+        if ( $tens < 20 ) {
+            $tens = ($tens ? ' ' . $list1[$tens] . ' ' : '' );
+        } else {
+            $tens = (int)($tens / 10);
+            $tens = ' ' . $list2[$tens] . ' ';
+            $singles = (int) ($num_levels[$i] % 10);
+            $singles = ' ' . $list1[$singles] . ' ';
+        }
+        $words[] = $hundred . $tens . $singles . ( ( $levels && ( int ) ( $num_levels[$i] ) ) ? ' ' . $list3[$levels] . ' ' : '' );
+    } //end for loop
+    $commas = count($words);
+    if ($commas > 1) {
+        $commas = $commas - 1;
+    }
+    return implode(' ', $words);
+}
+
+//TO SEND MAIL/////
+function send_email($email, $subject){
+    $message = "";
+    if(file_exists("email.php")){
+        $message = file_get_contents('email.php');
+        //$parts_to_mod = array("part1", "part2");
+       // $replace_with = array($value1, $value2);
+		$parts_to_mod = array("PUTNAMEHERE", "PUTMESSAGEHERE", "PUTSENDERHERE");
+		$replace_with = array($name, $message,  $rc['schoolname']);
+        for($i=0; $i<count($parts_to_mod); $i++){
+            $message = str_replace($parts_to_mod[$i], $replace_with[$i], $message);
+        }
+    }else{
+        $message = "Some Default Message"; 
+        /* this likely won't ever be called, but it's good to have error handling */
+    }
+
+    // Always set content-type when sending HTML email
+    $headers = "MIME-Version: 1.0" . "\r\n";
+    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+
+    // More headers
+    $headers .= 'From: <doNotReply@fuoye.edu.ng>' . "\r\n";
+    $headers .= "To: <$email>\r\n";
+    $header .= "Reply-To: doNotReply@fuoye.edu.ng\r\n";
+
+    mail($email,$subject,$message,$headers);
+}
+
+/* USED ON THE STUDENT PORTAL*/
+//////TO CHECK STUDENT MAIL IS VALID OR NOT//////////////
+function validatestudentemail($matno, $regno, $eyear, $cyear, $email, $domain){
+$expd=explode("@", $domain);
+$expe=explode("@", $email);
+$val="";
+if(strtolower($expd[1])!=strtolower($expe[1]) and $eyear!=$cyear and $email!=""){
+$val="Your Email address is declined. Please update your profile with student email given to you or Contact ICT directorate to get one. Please note that your account have been Unverified until you supplied a valid email. Thank you";
+mysqli_query($conn,"update stud_rec set email='', acctstatus=0 where Regno='$regno' or Matno='$matno'");}
+
+
+return $val;
+}
+
+
+//////TO CHECK IF ACCEPTANCE/ADMISSION FEE HAS BEEN PAID OR NOT//////////////
+function checkacceptancefee($matno, $regno, $nando, $lid=101){
+$acnt=0; $rcnt=0;
+$sq=mysqli_query($conn,"SELECT * FROM receipts WHERE (Regno='$regno' or Regno='$matno') and lid='101' ");
+if((mysql_affected_rows()==0)and($nando==0)){$acnt=0;}else{$acnt=1; $_SESSION['lid']=$alid; }
+return $acnt;
+}
+
+
+//TO CHECK IF BILLING/FEE HAS BEEN PAID NOT /////////
+function checkpaymentreceipt($matno, $regno, $session, $level, $lid){
+$sqx=mysqli_query($conn,"select * from receipts where (Regno='$matno' or Regno='$regno') and lid='$lid' and level='$level' and session='$session'");
+if(mysql_num_rows($sqx)>0){$status="TRUE";}else{$status="FALSE";}			
+return $status;
+}
+/* USED ON THE STUDENT PORTAL ENDS*/
+//TO CHECK IF FEEID IS VALID OR NOT///
+function checkfeeIDvalidity($feeid, $session)
+{
+$qry=mysqli_query($conn,"select * from label where session='$session' and id='$feeid'") or die(mysqli_error($conn). 'FEEID_FAIL');
+if(mysql_affected_rows()>0){$status= "TRUE";}else{$status="FALSE";}
+return $status;
+	
+}
+//TO CHECK IF A STUDENT PROFILE EXIST
+function checkstudentexistence($matno)
+{
+$qry=mysqli_query($conn,"select * from stud_rec where Regno='$matno' or Matno ='$matno' ") or die(mysqli_error($conn). 'STUD_REC_FAIL');
+if(mysql_affected_rows()>0){$status= "TRUE";}else{$status="FALSE";}
+return $status;
+}
+
+//TO CHECK IF A DEPARTMENT PROGRAMME EXIST
+function checkprogramexistence($programme)
+{
+mysqli_query($conn,"select * from programmes where pcode='$programme'") or die(mysqli_error($conn). 'PROG_REC_FAIL');
+if(mysql_affected_rows()>0){$status= "TRUE";}else{$status="FALSE";}
+return $status;
+}
+
+//TO CHECK IF A DEPARTMENT AND PROGRAMME EXIST IN PROGRAMME TABLE
+function check_dept_prog_existence($department,$programme)
+{
+mysqli_query($conn,"select * from programmes where dcode='$department' and pcode='$programme'") or die(mysqli_error($conn). 'PROG_REC_FAIL');
+if(mysql_affected_rows()>0){$status= "TRUE";}else{$status="FALSE";}
+return $status;
+}
+
+
+//TO CHECK IF A COURSE EXIST IN THE CURRICULLUM
+function checkcuriculum($ccode, $session, $semester, $programme)
+{
+$sq = mysqli_query($conn,"select * from curriculum where code='$ccode' and session='$session' and semester='$semester' and pcode = '$programme'") or die(mysqli_error($conn)." CUR_CHK_ERR");
+if(mysql_num_rows($sq)>0){$status="TRUE";}else{$status="FALSE";}			
+return $status;
+}
+
+//TO CHECK PAYMENGT ENROLMRNT FOR EVERY SESSION BEFORE PROCEEDING/////
+function checkenrolpayment($matno, $session, $semester)
+{
+$rlu=mysqli_fetch_assoc(mysqli_query($conn,"select Regno, Matno from stud_rec where Matno='$matno' or Regno='$matno'"));
+mysqli_query($conn,"select * from enrolpayment where (Matno='$rlu[Matno]' or Matno='$rlu[Regno]') and session='$session'");
+if(mysql_affected_rows()>0){$status="TRUE";}elseif(mysql_affected_rows()==0){$status="FALSE";}
+	
+return $status;
+}
+
+//TO CHECK IF A STUDENT S ENROLLED
+function checkenrolment($matno, $session, $semester)
+{
+$rlu=mysqli_fetch_assoc(mysqli_query($conn,"select Regno, Matno from stud_rec where Matno='$matno' or Regno='$matno'"));
+$query = mysqli_query($conn,"select * from enrolment where session = '$session' and semester = '$semester' and (Matno='$rlu[Matno]' or Matno='$rlu[Regno]')") or die(mysqli_error($conn).' SEL_CHK_ER');
+if (mysql_affected_rows()> 0){$enrolled = 'TRUE';
+$enrol = mysqli_fetch_assoc($query);
+$enrolled = array("TRUE", $enrol['level'], $enrol['programme']);
+} else{$enrolled = array('FALSE');}
+return $enrolled;	
+}
+
+
+
+//TO CHECK IF A STUDENT REGISTERED A PARTICULAR COURSE OR NOT
+function checkregisteredcourse($matno, $session, $semester, $code)
+{
+$rlu=mysqli_fetch_assoc(mysqli_query($conn,"select Regno, Matno from stud_rec where Matno='$matno' or Regno='$matno'"));
+$query = mysqli_query($conn,"select * from course_registrations where ccode='$code' and session='$session' and semester='$semester' and (Matno='$rlu[Matno]' or Matno='$rlu[Regno]')") or die(mysqli_error($conn).' SEL_CHK_ER');
+if (mysql_affected_rows()> 0){$status = 'TRUE';} else{$status = 'FALSE';}
+return $status;	
+}
+
+
+//TO ENROLL STUDENT FOR A PROGRAMME
+function enrollstudent($matno, $session, $semester, $level, $programme, $update=0)
+{
+//$query = mysqli_query($conn,"select * from enrolment where session = '$session' and semester = '$semester' and Matno = '$matno'") or die(mysqli_error($conn).' SEL_CHK_ER2');
+if($update=="0"){
+$q = mysqli_query($conn,"insert into enrolment (Matno, session, semester, programme,  level, status, date) values ('$matno', '$session', '$semester', '$programme','$level', '1', now()) ON DUPLICATE KEY UPDATE  level = '$level', programme = '$programme', date=NOW()") or die(mysqli_error($conn).' UP_ENR_ER');
+}elseif($update=="1"){
+$q = mysqli_query($conn,"insert into enrolment (Matno, session, semester, programme, level, date) values ('$matno', '$session', '$semester', '$programme', '$level', '0', now()) ON DUPLICATE KEY UPDATE  level = '$level', programme = '$programme', date=NOW()") or die(mysqli_error($conn).' UP_ENR_ER2');
+}
+if (mysql_affected_rows()> 0){$status = "TRUE";}else{$status = "FALSE";}
+
+return $status;
+}
+
+//TO REGISTER STUDENT AND ENROL THEM FOR A PROGRAMME
+function register_course_form_and_enrol($matno, $session, $semester, $level, $programme, $ccode, $score, $opt, $update=0)
+{
+$act = 0;
+$enrolled = checkenrolment($matno, $session, $semester);
+if ($enrolled[0] =='FALSE'){
+if (enrollstudent($matno, $session, $semester, $level, $programme) == "TRUE"){$act = 1;}
+} else {$act = 1;}
+$status = 'FAILED';
+if ($act == 1 and $update==1){
+if($opt=="opt1"){
+mysqli_query($conn,"update course_registrations set exam='$score',total='$score' where Matno='$matno' and ccode='$ccode' and session='$session' and semester='$semester' and total='0'");}else{
+mysqli_query($conn,"insert into course_registrations values('', '$matno', '$session', '$semester', '$ccode', '', '', '', now()) ON DUPLICATE KEY UPDATE exam='$score',total='$score', session='$session', semester='$semester'") or die(mysqli_error($conn)."REG_ERR");}
+}
+elseif ($act == 1 and $update==0){
+mysqli_query($conn,"insert into course_registrations values('', '$matno', '$session', '$semester', '$ccode', '', '$score', '$score', now()) ON DUPLICATE KEY UPDATE exam='$score',total='$score', session='$session', semester='$semester'") or die(mysqli_error($conn)."REG_ERR");
+}
+if(mysql_affected_rows()>0){$status = 'SUCCESSFUL';}else{$status = 'RECORD EXIST ALREADY';}
+return $status;
+}
+
+//FOR INDIVIDUAL LECTURER TO UPLOAD THEIR SCORES//
+function lecturer_result_upload($matno, $code, $session, $semester, $ca, $exam, $score){
+$rlu=mysqli_fetch_assoc(mysqli_query($conn,"select Regno, Matno from stud_rec where Matno='$matno' or Regno='$matno'"));
+
+$rpmrk=mysqli_fetch_assoc(mysqli_query($conn,"select b.pmark, b.level from enrolment a inner join curriculum b on a.programme=b.pcode and a.session=b.session and a.semester=b.semester where (a.Matno='$rlu[Matno]' or a.Matno='$rlu[Regno]') and b.code='$code'"));
+if($score<$rpmrk['pmark']){log_carryovers($matno, $code, $session, $semester, $rpmrk['level']);}
+	
+$sqs=mysqli_query($conn,"select * from course_registrations where (Matno='$rlu[Matno]' or Matno='$rlu[Regno]') and session='$session' and semester='$semester' and ccode='$code'");
+if(mysql_num_rows($sqs)>0){
+mysqli_query($conn,"Update course_registrations set ca='$ca', exam='$exam', total='$score' where (Matno='$rlu[Matno]' or Matno='$rlu[Regno]') and session='$session' and semester='$semester' and ccode='$code'") or die(mysqli_error($conn)." RST_UP_ERR");
+if(mysql_affected_rows()>0){$status="SUBMITTED SUCCESSFULLY";}else{$status="NO CHANGE WAS MADE, RESULT PREVIOUSLY SUBMITTED";}}else{$status="COURSE NOT REGISTERED BY STUDENT";}
+return $status;	
+}
+
+//FOR INDIVIDUAL LECTURER TO UPLOAD THEIR SCORES ERROR ROUTINE//
+function lecturer_result_upload_err($matno, $code, $session, $semester, $ca, $exam, $score){
+$rlu=mysqli_fetch_assoc(mysqli_query($conn,"select Regno, Matno, CONCAT(Surname,' ',Othernames) fullname from stud_rec where Matno='$matno' or Regno='$matno'"));
+
+$fullname=mysql_real_escape_string($rlu['fullname']);	
+if($rlu['Matno']!=""){
+mysqli_query($conn,"insert into course_registrations_err (Matno, Fullname, session, semester,ccode,ca,exam,total,date) Values ('$rlu[Matno]', '$fullname', '$session', '$semester', '$code', '$ca', '$exam', '$score', NOW()) ON DUPLICATE KEY UPDATE Fullname='$fullname', ca='$ca', exam='$exam', total='$score'") or die(mysqli_error($conn)." RST_UP_ERR");
+}
+mysqli_query($conn,"delete from course_registrations_err where Matno='' or session='' or semeter=''");	
+}
+
+//TO STORE CARRYOVER
+function log_carryovers($matno, $code, $session, $semester, $level)
+{
+$semester=strtoupper($semester);
+mysqli_query($conn,"insert into carryovers values ('', '$matno','$code', '$session', '$semester', '$level', '','','','0', now()) ON DUPLICATE KEY UPDATE date= now()") or die(mysqli_error($conn).' LK_CARRY_ER');
+
+mysqli_query($conn,"update carryovers set psession='', psemester='', plevel='', deleted='0' where Matno='$matno' and code='$code' and psession='$session' and psemester='$semester' and  plevel='$level' ");
+}
+
+///LOG CARRYOVERS THAT ARE NOT REGISTERED BY STUDENTS////
+function log_carryovers_leftover($matno, $session, $semester, $level, $programme)
+{
+$semester=strtoupper($semester);
+$rlu=mysqli_fetch_assoc(mysqli_query($conn,"select Regno, Matno from stud_rec where Matno='$matno' or Regno='$matno'"));
+
+$smx=mysqli_query($conn,"select * from curriculum where session='$session' and semester='$semester' and level='$level' and pcode='$programme'  and status!='E' and status!='D' and code not in (select distinct a.ccode from course_registrations a left outer join enrolment b on a.session=b.session and a.semester=b.semester where (a.Matno='$rlu[Matno]' or a.Matno='$rlu[Regno]') and (b.Matno='$rlu[Matno]' or b.Matno='$rlu[Regno]') and a.session='$session' and a.semester='$semester' and b.level='$level' and b.programme='$programme') order by status, code");
+while($rmx=mysqli_fetch_assoc($smx)){log_carryovers($matno, $rmx['code'], $session, $semester, $level);}
+
+}
+
+//TO DELETE CARRYOVER///
+function delete_carryover($matno, $code, $session, $semester, $level, $total, $pmark){
+$semester=strtoupper($semester);
+$rlu=mysqli_fetch_assoc(mysqli_query($conn,"select Regno, Matno from stud_rec where Matno='$matno' or Regno='$matno'"));
+if($total>=$pmark and $total!="NRS"){
+mysqli_query($conn,"delete from carryovers where (Matno='$rlu[Matno]' or Matno='$rlu[Regno]') and code='$code' and  session='$session' and semester='$semester' and level='$level'");
+mysqli_query($conn,"update carryovers set psession='$session', psemester='$semester', plevel='$level', deleted='1' where (Matno='$rlu[Matno]' or Matno='$rlu[Regno]') and code='$code'") or die(mysqli_query($conn,)." CO_DEL_ERR");}
+elseif($total=="NRS"){mysqli_query($conn,"delete from carryovers where (Matno='$rlu[Matno]' or Matno='$rlu[Regno]') and code='$code' and  session='$session' and semester='$semester' and level='$level'");}
+mysqli_query($conn,"delete from carryovers where (Matno='$rlu[Matno]' or Matno='$rlu[Regno]') and code='$code' and  session>psession and level>plevel and psession!='' and plevel!=''");
+	
+//mysqli_query($conn,"delete from carryovers where Matno='$matno' and session='$session' and semester='$semester' and code='$code' and code NOT IN (select a.code from curriculum a inner join course_registrations b on a.session=b.session and a.semester=b.semester and a.code=b.ccode where b.Matno='$matno' and a.session='$session' and a.semester='$semester' and b.session='$session' and b.semester='$semester' and (a.status='D' or a.status='E'))") or die(mysqli_error($conn)."ADJ_CO_ERR_1");
+	
+
+}
+
+///TO STORE RESULT ALTRARTION STATUS
+function log_track($pcode, $session, $semester, $level, $update=0){
+if($update==0){
+	
+mysqli_query($conn,"insert into track_result_status Values('', '$pcode', '$session', '$semester', '$level', '$update', now()) ON DUPLICATE KEY UPDATE status='$update', date= now()")or die(mysqli_error($conn).' INS_TRK_ERR');	
+}else{
+	
+mysqli_query($conn,"insert into track_result_status Values('', '$pcode', '$session', '$semester', '$level',  '$update', now()) ON DUPLICATE KEY UPDATE status='$update', date= now()") or die(mysqli_error($conn).' INS_TRK_ERR');	
+}
+}
+
+////STORE EACH SEMESTER RESULT////
+function log_main_computation($matno, $session, $semester, $entryyear, $level, $tcr, $tce, $tgp, $gpa, $cgpa,$act=0){
+$tbl=strtolower($level.$semester);
+$prob1=0; $prob2=0; $prob3=0;
+if($entryyear<"2014/2015"){$point=1.0;}else{$point=1.5;}
+if($tbl=="100first" and $cgpa<$point){$rmk=1; $prob="PROBATION I"; $prob1++;}
+elseif($tbl!="100first"){
+
+
+if(strtoupper($semester)=="SECOND"){
+$sqn=mysqli_query($conn,"select * from enrolment where Matno='$matno' and session='$session' and semester='FIRST'");
+$rn=mysqli_fetch_assoc($sqn);
+$delval="Matno='$matno'  and session>'$session'";
+}
+else{
+$sqn=mysqli_query($conn,"select * from enrolment where Matno='$matno' and session<'$session' and semester='SECOND' order by session DESC LIMIT 1");
+$rn=mysqli_fetch_assoc($sqn);
+
+$delval=" (Matno='$matno' and session='$session' and semester='SECOND') or (Matno='$matno' and session >'$session')";	
+}
+$ctbl=strtolower($rn['level'].$rn['semester']);
+if($ctbl!=""){
+$sql=mysqli_query($conn,"select remarks from `$ctbl` where Matno='$matno' and session='$rn[session]' and semester='$rn[semester]'")or die(mysqli_error($conn).'PROB_ERR');
+$r=mysqli_fetch_assoc($sql);}//else{echo "Error: Please check $matno enrolments";}
+
+if($cgpa<$point){$rmk=$r['remarks']+1;}else{$rmk=0;}
+if($rmk==1){$prob="PROBATION I"; $prob1++;}elseif($rmk==2){$prob="PROBATION II"; $prob2++;}elseif($rmk>=3){$prob="WITHDRAWAL"; 
+mysqli_query($conn,"delete from enrolment where $delval") or die(mysql_query." WITHDRAW_ERR"); $prob3++; }
+}
+
+if($act==0){
+mysqli_query($conn,"INSERT INTO $tbl VALUES ('', '$matno', '$session', '$semester', '$level', '$tcr', '$tce', '$tgp', '$gpa', '$rmk', NOW()) ON DUPLICATE KEY UPDATE tcr='$tcr', tce='$tce', tgp='$tgp', gpa='$gpa', remarks='$rmk', Date=NOW()") or die(mysqli_error($conn)." INS_COMP_ERR");}
+
+return $prob.":".$prob1.":".$prob2.":".$prob3;
+}
+
+
+////STORE EACH SEMESTER CARRYOVER RESULT////
+function log_carryover_computation($matno, $session, $semester, $level, $cotcr, $cotce, $cotgp){
+mysqli_query($conn,"INSERT INTO carryover_result VALUES ('', '$matno', '$session', '$semester', '$level', '$cotcr', '$cotce', '$cotgp',now()) ON DUPLICATE KEY UPDATE tcr='$cotcr', tce='$cotce', tgp='$cotgp', Date=now()") or die(mysqli_error($conn)." INS_COMP_ERR");	
+}
+
+////LOGGING RESULT SUBMISSION////
+function log_result_upload($code, $session, $semester, $staffid, $ctype, $pass_loc, $uploadstatus){
+if($uploadstatus==1){$date="upddate=now()";}else{$date="revdate=now()";}
+mysqli_query($conn,"INSERT INTO track_result_upload (code, session, semester, staffid, ctype, fpath, status,date) VALUES ('$code', '$session', '$semester', '$staffid', '$ctype', '$pass_loc', '$uploadstatus', now()) ON DUPLICATE KEY UPDATE ctype='$ctype', status='$uploadstatus', $date") or die(mysqli_error($conn)." RST_SUB_ERR");	
+if(mysql_affected_rows()>0){$status="TRUE";}else{$status="FALSE";}
+
+return $status;
+}
+
+
+//FETCH CARRYOVER//
+function fetch_carryover($matno, $session, $semester, $level, $pcode){
+$frv = ""; $cocnt=0; $pcnt=0; $semester=strtoupper($semester);
+//$sq=mysqli_query($conn,"select MAX(level) from carryover");
+$tbl=strtolower($level.$semester);
+
+//DELETE CURRENT COURSE ALREADY PASSED
+//mysqli_query($conn,"delete from carryovers where Matno='$matno' and session='$session' and semester='$semester' and level=$level and deleted=1") or die(mysqli_error($conn)." DEL_CO_ERR");
+
+//DELETE CURRENT RESULTS NOT IN THE CURRICULUM
+mysqli_query($conn,"delete from course_registrations where Matno='$matno' and session='$session' and semester='$semester'  and ccode NOT IN (select code from curriculum where  session='$session' and semester='$semester' and pcode='$pcode' and level<=$level)") or die(mysqli_error($conn)." ADJ_CO_ERR_2");
+
+mysqli_query($conn,"delete from carryovers where Matno='$matno' and session='$session' and semester='$semester' and code NOT IN (select code from curriculum where  session='$session' and semester='$semester' and pcode='$pcode' and level<=$level)") or die(mysqli_error($conn)." ADJ_CO_ERR_3");
+
+//mysqli_query($conn,"delete from carryovers where Matno='$matno' and session='$session' and semester='$semester' and code NOT IN (select code from curriculum where  session='$session' and semester='$semester' and pcode='$pcode' and level='$level')") or die(mysqli_error($conn)." ADJ_CO_ERR_4");
+	
+//mysqli_query($conn,"delete from carryovers where Matno='$matno' and session='$session' and semester='$semester' and level='$level' and code NOT IN (select ccode from course_registrations where Matno='$matno' and session='$session' and semester='$semester')") or die(mysqli_error($conn)."ADJ_CO_ERR_4"); 
+	
+////TO DELETE COURSES WIT STATUS "D" AND NOT REGISTERED
+mysqli_query($conn,"delete from carryovers where Matno='$matno' and session='$session' and semester='$semester' and code NOT IN (select ccode from course_registrations where Matno='$matno' and session='$session' and semester='$semester') and code IN (select code from curriculum where session='$session' and semester='$semester' and pcode='$pcode' and (status='D' or status='E'))") or die(mysqli_error($conn)."ADJ_CO_ERR_1");
+
+
+mysqli_query($conn,"delete from carryovers where Matno='$matno' and session='$session' and semester='$semester' and level='$level' and Matno NOT IN (select Matno from enrolment where  Matno='$matno' and session='$session' and semester='$semester' and level='$level')") or die(mysqli_error($conn)." ADJ_CO_ERR_6");
+
+
+mysqli_query($conn,"delete from course_registrations where Matno='$matno' and session='$session' and semester='$semester' and Matno NOT IN (select Matno from enrolment where  Matno='$matno' and session='$session' and semester='$semester')") or die(mysqli_error($conn)." ADJ_CO_ERR_7");
+
+
+if($semester=="FIRST"){$add="(session < '$session' and deleted=0) or (session='$session' and semester='$semester') or ('$session' between session and psession and psession<'$session') or (psession='$session' and psemester!='$semester' and deleted=1)"; }else{$add="(session <= '$session' and deleted=0) or ('$session' between session and psession and psession!='$session')";}
+//$h="SELECT DISTINCT code FROM carryovers WHERE Matno = '$matno' and (($add)) order by level, code";
+$str=mysqli_query($conn,"SELECT DISTINCT code FROM carryovers WHERE Matno = '$matno' and (($add)) order by level, code") or die(mysqli_error($conn)." FETCH_CO_ERR");
+
+$rr=mysqli_fetch_assoc($str);
+$k = 1.0;
+do
+{
+	$e = fmod($k,2.0);
+	//mod
+	if($e == 0){
+		 $frv .= $rr['code']."<BR>";
+	}
+	if($e >0){
+		 $frv.=$rr['code'].",";
+	}
+	++$k;
+	//echo $k;
+}while($rr=mysqli_fetch_assoc($str));
+if($frv==","){$remark="Passed"; $pcnt++;}else{$remark=$frv; $cocnt++;}
+return  $remark.":".$pcnt.":".$cocnt.":".$h;
+}
+
+//FETCH CARRYOVER FOR CO SHEET//
+function fetch_carryover_cosheet($matno, $session, $semester, $level){
+$frv = ""; $cocnt=0; $pcnt=0;
+$str=mysqli_query($conn,"SELECT DISTINCT code FROM carryovers WHERE Matno ='$matno' and session='$session' and semester='$semester' and level='$level'")  or die(mysqli_query($conn,)." FETCH_CO_ERR");
+$r=mysqli_fetch_assoc($str);
+$k = 1.0;
+do
+{
+	$e = fmod($k,3.0);
+	//mod
+	if($e == 0){
+		 $frv .= $r['code']."<BR>";
+	}
+	if($e >0){
+		 $frv.=$r['code'].",";
+	}
+	++$k;
+	//echo $k;
+}while($r=mysqli_fetch_assoc($str));
+if($frv==","){$remark="Passed"; $pcnt++;}else{$remark=$frv; $cocnt++;}
+return  $remark.":".$pcnt.":".$cocnt;
+}
+
+
+//LOOPING BACKWARDS TO GET PREVIOUS AND GENERATE CUMMULATIVE//
+function get_previous_cumulative($matno, $session, $semester, $level, $programme){
+$act=0; $a=array("FIRST", "SECOND");  $lvcnt=100; 
+$ptcr=0;	$ptce=0;	$ptgp=0;	$pgpa=0;	$lev=0;
+$prev=array($ptcr, $ptce, $ptgp, $pgpa);
+
+$lim=substr($level, 0, 1)-1; $lev=$level-$lvcnt;
+if($lim==0 and $lev==0 and strtoupper($semester)=="FIRST"){$act=0; $lev=$lev;}else{$act=1; $lev=$lev+100;}
+
+if ($act ==1){
+$sess = '';
+if (strtoupper($semester)=="SECOND"){$nlim = $lim + 1; $sess =" and (session<'$session' or (session='$session' and semester='FIRST'))";} else {$nlim = $lim; $sess=" and session<'$session'";}
+
+//echo "SELECT session, semester, level from enrolment where Matno='$matno' $sess order by session ASC ";
+$sqN = mysqli_query($conn,"SELECT programme,session, semester, level from enrolment where Matno='$matno' $sess order by session ASC ") or die(mysqli_error($conn)." ENROL_SESS_ERR"); 
+$num_enrolments = mysql_num_rows($sqN);
+//echo '<br>NUMBER OF ENROLMENTS IS '.$num_enrolments;
+while ($rn = mysql_fetch_array($sqN)){
+$ctable = strtolower($level.$semester);
+$etable = strtolower($rn['level'].$rn['semester']);
+//if ($ctable != $etable){
+//CHECK IF THE TABLE HAS BEEN RECENTLY UPDATED
+$sv=mysqli_query($conn,"select status from track_result_status where pcode='$rn[programme]' and session='$rn[session]' and semester='$rn[semester]' and level='$rn[level]' and status>0") or die(mysqli_error($conn)." PREV_CUMM_ERR");
+if(mysql_num_rows($sv)> 0){	
+$sqM=mysqli_query($conn,"select * from `$etable` where Matno = '$matno' and session='$rn[session]' and level='$rn[level]'") or die(mysqli_error($conn)." LOOK+BACK_ERR");
+if(mysql_num_rows($sqM)>0){
+$rm=mysqli_fetch_assoc($sqM);
+//TO GET PREVIOUS//
+$ptcr=$ptcr+$rm['tcr'];
+$ptce=$ptce+$rm['tce'];
+$ptgp=$ptgp+$rm['tgp'];
+$pgpa=number_format(round(($ptgp/$ptcr), 2), 2);
+}
+} else {//CONFIRMED THE STATUS OF THE TABLE AINT 1//?>
+    <script language="javascript">alert("Oh Snap! Your request could not be processed\nReason:An update has previously occurred on <?php echo $rn['level']." Level ".$rn['session']." ". $rn['semester']." Semester"?>. Kindly re-generate that instance to proceed.\nThank you"); </script>
+    <?php exit;
+		}
+		
+	//} else {/*echo "ctable {$ctable} is etable is {$etable} same <br>";*/	}
+	
+$prev=array($ptcr, $ptce, $ptgp, $pgpa);
+}
+
+}
+return $prev; 
+}
+
+
+
+//ROUTINE TO COMPUTE CARRYOVER INSTANCES///
+function generate_carryover_result($matno, $session, $semester, $level, $programme){
+$cotcr = 0; $cotgp = 0;	$cotce = 0;
+$co=array($cotcr, $cotce, $cotgp);
+$tbl=strtolower($level.$semester);
+
+$rlu=mysqli_fetch_assoc(mysqli_query($conn,"select Regno, Matno from stud_rec where Matno='$matno' or Regno='$matno'"));
+mysqli_query($conn,"update course_registrations set Matno='$rlu[Matno]' where Matno='$rlu[Regno]'");
+mysqli_query($conn,"update carryover_result set Matno='$rlu[Matno]' where Matno='$rlu[Regno]'");
+mysqli_query($conn,"update carryovers set Matno='$rlu[Matno]' where Matno='$rlu[Regno]'");
+mysqli_query($conn,"update $tbl set Matno='$rlu[Matno]' where Matno='$rlu[Regno]'");
+	
+	
+$sql=mysqli_query($conn,"select distinct a.ccode as code from course_registrations a, enrolment b where a.Matno=b.Matno and a.Matno='$matno' and b.matno='$matno' and  a.session='$session' and a.semester='$semester' and b.level='$level' and b.programme='$programme' and a.ccode NOT IN (select code from curriculum where session='$session' and semester='$semester' and level='$level' and pcode='$programme') order by a.ccode") or die(mysqli_query($conn,)." GEN_CO_ERR");
+
+if(mysql_num_rows($sql)>0){
+while($rl=mysqli_fetch_assoc($sql)){
+$sm=mysqli_query($conn,"select * from curriculum where session='$session' and semester='$semester' and pcode='$programme' and code='$rl[code]'") or die(mysqli_error($conn). "CUR_FETCH_ERR");
+
+if (mysql_num_rows($sm) > 0){
+$rm=mysqli_fetch_assoc($sm);
+$sv=mysqli_query($conn,"select point*$rm[unit] as POINT_OBTAINED, grade, total from course_registrations inner join result_grade where session='$session' and semester='$semester' and Matno = '$matno' and ccode='$rm[code]' and course_registrations.total BETWEEN min and max ") or die (mysqli_error($conn).' CO_COMP_ERR'); 
+
+if (mysql_num_rows($sv) > 0){
+$rv=mysqli_fetch_assoc($sv);
+$cotcr += $rm['unit'];  
+$cotgp += $rv['POINT_OBTAINED'];
+
+if ($rv['total'] >= $rm['pmark']) {
+delete_carryover($matno, $rm['code'], $session, $semester, $level, $rv['total'], $rm['pmark']);	
+$cotce += $rm['unit'];}else{log_carryovers($matno, $rm['code'], $session, $semester, $level);}
+
+log_carryover_computation($matno, $session, $semester, $level, $cotcr, $cotce, $cotgp);
+}
+}
+$co=array($cotcr, $cotce, $cotgp, $rv['total']);
+}
+}
+return $co; 
+}
+
+
+////GET THE SIZE OF A FILE WITH AN EXTENSION////////////
+function formatSizeUnits($bytes)
+    {
+        if ($bytes >= 1073741824)
+        {
+            $bytes = number_format($bytes / 1073741824, 2) . ' GB';
+        }
+        elseif ($bytes >= 1048576)
+        {
+            $bytes = number_format($bytes / 1048576, 2) . ' MB';
+        }
+        elseif ($bytes >= 1024)
+        {
+            $bytes = number_format($bytes / 1024, 2) . ' KB';
+        }
+        elseif ($bytes > 1)
+        {
+            $bytes = $bytes . ' bytes';
+        }
+        elseif ($bytes == 1)
+        {
+            $bytes = $bytes . ' byte';
+        }
+        else
+        {
+            $bytes = '0 bytes';
+        }
+
+        return $bytes;
+}
+
+
+
+/////////CHECKING FOR CLASS OF DEGREE///
+function check_class_degree($ovgpa){
+$squ=mysqli_query($conn,"select id, class from degree_class where '$ovgpa' between min and max");
+$ru=mysqli_fetch_assoc($squ);
+$class=$ru['class'];
+if($ru['id']==1){$fc+=1;}elseif($ru['id']==2){$scu+=1;}elseif($ru['id']==3){$scl+=1;}elseif($ru['id']==4){$tc+=1;}elseif($ru['id']==5){$pc+=1;}
+return $class.":".$fc.":".$scu.":".$scl.":".$tc.":".$pc;
+}
+
+//CHECKING TO SEEE IF THE STUDENT IS A SPILLOVER STIDENTS AND NUMBER OF TIMES OF SPILLING//
+function check_spillover_session($matno, $session, $semester, $level, $entrylevel, $plevel){
+$sess = ''; $status=array($spillover, $scount);
+$elev=substr($plevel, 0,-2);
+
+if (strtoupper($semester)=="SECOND"){$sess =" and (session<'$session' or (session='$session' and semester='FIRST'))"; $sesscnt =" and (session<'$session' or (session='$session'))";} else {$sess=" and session<='$session'"; $sesscnt=" and session<='$session'";}
+
+$sqN = mysqli_query($conn,"SELECT DISTINCT session from enrolment where Matno='$matno' $sesscnt order by session ASC ") or die(mysqli_error($conn)." ENROL_SESS_ERR"); 
+$num_enrolments = mysql_num_rows($sqN);
+if($entrylevel==200){$num_enrolments=$num_enrolments+1;}
+
+if($num_enrolments>$elev){$spillover="TRUE";}else{$spillover="FALSE";}
+
+/////CHECKING THE NUMBER OF TIMES A STUDENT SPILLOVERS/////
+if($spillover=="TRUE"){
+$count=$num_enrolments-$elev; if($count==1){$scount="SPILLOVER1";}elseif($count==2){$scount="SPILLOVER2";}elseif($count==3){$scount="TERMINATED";}elseif($count==4){$scount="RE-INSTATED";}
+}
+
+return array($spillover, $scount, $test); 
+}
+
+
+///////THIS SECTION DEALS WITH USER ACTIVITY LOG//////
+function log_activity($username, $logmsg, $ipaddress, $refferer, $pagevisited, $useragent){
+mysql_query("INSERT INTO activitylog (username, message, ipaddress, refferer, pagevisited, useragent, timestamp) VALUES ('$username', '$logmsg', '$ipaddress', '$refferer', '$pagevisited', '$useragent', NOW())") or die(mysqli_error($conn)." Log Failed");	
+
+}
+///////ACTIVITY LOG FUNCTIONS ENDED////////////////
+
+
+?>

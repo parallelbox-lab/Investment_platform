@@ -1,0 +1,43 @@
+#AddHandler application/x-httpd-php70 .php .php5.3 .php4 .php3
+# DirectoryIndex: sets the file that Apache will serve if a directory is requested.
+DirectoryIndex index.html index.php /index.php
+
+
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteCond %{REQUEST_URI} !^/[0-9]+\..+\.cpaneldcv$
+RewriteCond %{REQUEST_URI} !^/\.well-known/pki-validation/[A-F0-9]{32}\.txt(?:\ Comodo\ DCV)?$
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteCond %{REQUEST_URI} !/$
+RewriteCond %{REQUEST_URI} !^/[0-9]+\..+\.cpaneldcv$
+RewriteCond %{REQUEST_URI} !^/\.well-known/pki-validation/[A-F0-9]{32}\.txt(?:\ Comodo\ DCV)?$
+RewriteRule ^(.*)$ $1\.php
+
+#CACHE IMAGES TO IMPROVE PAGE LOAD SPEED
+<IfModule mod_expires.c>
+  ExpiresActive On
+
+  # Images
+  ExpiresByType image/jpeg "access plus 1 day"
+  ExpiresByType image/gif "access plus 1 day"
+  ExpiresByType image/png "access plus 1 day"
+  ExpiresByType image/webp "access plus 1 day"
+  ExpiresByType image/svg+xml "access plus 1 day"
+  ExpiresByType image/x-icon "access plus 1 day"
+
+  # Video
+  ExpiresByType video/mp4 "access plus 1 week"
+  ExpiresByType video/mpeg "access plus 1 week"
+
+  # CSS, JavaScript
+  ExpiresByType text/css "access plus 1 week"
+  ExpiresByType text/javascript "access plus 1 week"
+  ExpiresByType application/javascript "access plus 1 week"
+
+  # Others
+  ExpiresByType application/pdf "access plus 1 weel"
+  ExpiresByType application/x-shockwave-flash "access plus 1 week"
+</IfModule>
